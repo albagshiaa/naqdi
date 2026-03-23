@@ -1,7 +1,7 @@
 {
   "name": "naqdi",
-  "version": "1.0.0",
-  "description": "Naqdi - نقدي | Smart POS for Saudi Merchants",
+  "version": "1.0.1",
+  "description": "Naqdi - Smart POS for Saudi Merchants",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -20,7 +20,7 @@
   "build": {
     "appId": "com.naqdi.pos",
     "productName": "Naqdi",
-    "copyright": "Copyright © 2025 Asas Albahth Commercial Company",
+    "copyright": "Copyright 2025 Asas Albahth Commercial Company",
     "directories": {
       "output": "dist"
     },
@@ -39,15 +39,15 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "renderer/icon-256.png",
+      "icon": "renderer/icon.ico",
       "publisherName": "Asas Albahth Commercial Company"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "renderer/icon-256.png",
-      "uninstallerIcon": "renderer/icon-256.png",
-      "installerHeaderIcon": "renderer/icon-256.png",
+      "installerIcon": "renderer/icon.ico",
+      "uninstallerIcon": "renderer/icon.ico",
+      "installerHeaderIcon": "renderer/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Naqdi",
