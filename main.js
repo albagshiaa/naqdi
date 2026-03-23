@@ -3,25 +3,21 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-// ============ AUTO-UPDATER ============
+// ============ AUTO-UPDATER — Manual approach ============
+const https = require('https');
 const { autoUpdater } = require('electron-updater');
-autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.logger = console;
 
+let _latestVersion = null;
+let _downloadProgress = 0;
+let _isDownloading = false;
+
 function setupAutoUpdater() {
-  // For private GitHub repos, set the token for auto-updater
-  const GH_TOKEN = process.env.GH_TOKEN || '';
-  if (GH_TOKEN) {
-    autoUpdater.requestHeaders = { Authorization: `token ${GH_TOKEN}` };
-  }
-
-  autoUpdater.on('checking-for-update', () => {
-    console.log('[Updater] Checking for updates...');
-  });
-
   autoUpdater.on('update-available', (info) => {
     console.log('[Updater] Update available:', info.version);
+    _latestVersion = info.version;
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update:available', info.version);
     }
@@ -29,52 +25,154 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-not-available', (info) => {
     console.log('[Updater] Already on latest version:', info.version);
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    console.log('[Updater] Download progress:', Math.round(progress.percent) + '%');
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    console.log('[Updater] Update downloaded:', info.version);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update:downloaded', info.version);
+      mainWindow.webContents.send('update:not-available', info.version);
     }
   });
 
   autoUpdater.on('error', (err) => {
     console.error('[Updater] Error:', err.message);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:error', err.message);
+    }
   });
 
-  // Check after 10 seconds (let the app finish loading first)
+  // Check after 10 seconds
   setTimeout(() => {
-    console.log('[Updater] Starting initial check...');
     autoUpdater.checkForUpdates().catch(err => {
       console.error('[Updater] Check failed:', err.message);
     });
   }, 10000);
 
-  // Then check every 4 hours
+  // Check every 4 hours
   setInterval(() => {
-    autoUpdater.checkForUpdates().catch(err => {
-      console.error('[Updater] Periodic check failed:', err.message);
-    });
+    autoUpdater.checkForUpdates().catch(() => {});
   }, 4 * 60 * 60 * 1000);
 }
 
-// IPC handler — user clicks "restart to update"
-ipcMain.handle('update:install', () => {
-  autoUpdater.quitAndInstall(false, true);
-});
-
+// Manual check — user clicks "Check for Updates"
 ipcMain.handle('update:check', async () => {
   try {
     const result = await autoUpdater.checkForUpdates();
-    return { updateAvailable: !!result?.updateInfo?.version };
+    const ver = result?.updateInfo?.version;
+    if (ver && ver !== app.getVersion()) {
+      _latestVersion = ver;
+      return { updateAvailable: true, version: ver };
+    }
+    return { updateAvailable: false, version: app.getVersion() };
   } catch (err) {
     console.error('[Updater] Manual check failed:', err.message);
-    throw err;
+    return { updateAvailable: false, error: err.message };
   }
+});
+
+// Download — user clicks "Download"
+ipcMain.handle('update:download', async () => {
+  if (_isDownloading) return { success: false, error: 'Already downloading' };
+  _isDownloading = true;
+  _downloadProgress = 0;
+
+  try {
+    const version = _latestVersion;
+    if (!version) throw new Error('No version to download');
+
+    const fileName = `Naqdi-Setup-${version}.exe`;
+    const url = `https://github.com/albagshiaa/naqdi/releases/download/v${version}/${fileName}`;
+    const updaterDir = path.join(app.getPath('userData'), '..', 'Local', 'naqdi-updater');
+
+    if (!fs.existsSync(updaterDir)) fs.mkdirSync(updaterDir, { recursive: true });
+    const filePath = path.join(updaterDir, 'update-installer.exe');
+
+    // Delete old file if exists
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    await new Promise((resolve, reject) => {
+      function download(downloadUrl, redirects) {
+        if (redirects > 10) { reject(new Error('Too many redirects')); return; }
+
+        const lib = downloadUrl.startsWith('https') ? https : require('http');
+        lib.get(downloadUrl, { headers: { 'User-Agent': 'naqdi-updater' } }, (res) => {
+          // Follow redirects
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            download(res.headers.location, redirects + 1);
+            return;
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+            return;
+          }
+
+          const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+          let downloaded = 0;
+          const file = fs.createWriteStream(filePath);
+
+          res.on('data', (chunk) => {
+            downloaded += chunk.length;
+            file.write(chunk);
+            if (totalSize > 0) {
+              _downloadProgress = Math.round((downloaded / totalSize) * 100);
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('update:progress', _downloadProgress);
+              }
+            }
+          });
+
+          res.on('end', () => {
+            file.end();
+            _isDownloading = false;
+            _downloadProgress = 100;
+            console.log('[Updater] Download complete:', filePath, 'Size:', downloaded);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('update:ready', version);
+            }
+            resolve();
+          });
+
+          res.on('error', (err) => {
+            file.end();
+            _isDownloading = false;
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            reject(err);
+          });
+        }).on('error', (err) => {
+          _isDownloading = false;
+          reject(err);
+        });
+      }
+
+      download(url, 0);
+    });
+
+    return { success: true };
+  } catch (err) {
+    _isDownloading = false;
+    console.error('[Updater] Download failed:', err.message);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:error', err.message);
+    }
+    return { success: false, error: err.message };
+  }
+});
+
+// Install — user clicks "Install & Restart"
+ipcMain.handle('update:install', () => {
+  const updaterDir = path.join(app.getPath('userData'), '..', 'Local', 'naqdi-updater');
+  const filePath = path.join(updaterDir, 'update-installer.exe');
+
+  if (!fs.existsSync(filePath)) {
+    return { success: false, error: 'Installer not found' };
+  }
+
+  // Launch the installer and quit the app
+  const { spawn } = require('child_process');
+  spawn(filePath, ['/S'], { detached: true, stdio: 'ignore' }).unref();
+  setTimeout(() => app.quit(), 1000);
+  return { success: true };
+});
+
+// Get download progress
+ipcMain.handle('update:getProgress', () => {
+  return { progress: _downloadProgress, downloading: _isDownloading };
 });
 
 ipcMain.handle('app:getVersion', () => {
@@ -2331,7 +2429,7 @@ ipcMain.handle('network:scan', async (event, port, timeout) => {
 });
 
 // ==================== QOYOD ACCOUNTING INTEGRATION ====================
-const https = require('https');
+// https already required at top of file
 
 function qoyodRequest(method, path, apiKey, body) {
   return new Promise((resolve, reject) => {

@@ -1088,49 +1088,103 @@ window.showShortcutsOverlay = showShortcutsOverlay;
 
 // ============ UPDATES PAGE + SIDEBAR BADGE ============
 let _pendingUpdateVersion = null;
-let _updateDownloaded = false;
+let _updateReady = false;
+let _updateError = null;
+let _downloadPercent = 0;
+let _isDownloading = false;
 
-// Listen for update events from main process — show red badge on sidebar
+// Listen for update events from main process
 (function setupUpdateListeners() {
   if (!window.daftrly?.onUpdateAvailable) return;
 
   window.daftrly.onUpdateAvailable((version) => {
     _pendingUpdateVersion = version;
+    _updateReady = false;
     const badge = document.getElementById('update-badge');
     if (badge) { badge.style.display = ''; badge.textContent = '!'; }
   });
 
-  window.daftrly.onUpdateDownloaded((version) => {
+  window.daftrly.onUpdateProgress?.((percent) => {
+    _downloadPercent = percent;
+    const bar = document.getElementById('update-progress-fill');
+    const pct = document.getElementById('update-progress-pct');
+    if (bar) bar.style.width = percent + '%';
+    if (pct) pct.textContent = percent + '%';
+  });
+
+  window.daftrly.onUpdateReady?.((version) => {
     _pendingUpdateVersion = version;
-    _updateDownloaded = true;
+    _updateReady = true;
+    _isDownloading = false;
+    _downloadPercent = 100;
     const badge = document.getElementById('update-badge');
     if (badge) { badge.style.display = ''; badge.textContent = '1'; }
-    // Refresh page if user is already on updates
     const content = document.getElementById('main-content');
     if (content && currentPage === 'updates') renderUpdatesPage(content);
   });
-})();
 
-// Add IPC handler for manual check
-if (!window.daftrly.checkForUpdate) {
-  window.daftrly.checkForUpdate = () => window.daftrly.query ? 
-    Promise.resolve({ checking: true }) : Promise.resolve({ checking: false });
-}
+  window.daftrly.onUpdateError?.((msg) => {
+    _updateError = msg;
+    _isDownloading = false;
+    const content = document.getElementById('main-content');
+    if (content && currentPage === 'updates') renderUpdatesPage(content);
+  });
+
+  window.daftrly.onUpdateNotAvailable?.(() => {
+    _pendingUpdateVersion = null;
+    _updateReady = false;
+  });
+})();
 
 async function renderUpdatesPage(content) {
   const lang = getLang();
-  const currentVersion = window.daftrly.version || '—';
-  
-  // Get real version from main process
-  let realVersion = currentVersion;
-  try {
-    if (window.daftrly.getVersion) realVersion = await window.daftrly.getVersion();
-  } catch(e) {}
+  let realVersion = window.daftrly.version || '—';
+  try { if (window.daftrly.getVersion) realVersion = await window.daftrly.getVersion(); } catch(e) {}
+
+  // Determine state
+  let statusHtml = '';
+  let actionHtml = '';
+
+  if (_updateReady) {
+    // Ready to install
+    statusHtml = `
+      <div style="color:var(--success);font-size:16px;font-weight:700;margin-bottom:8px;">✅ ${lang === 'ar' ? `الإصدار ${_pendingUpdateVersion} جاهز للتثبيت` : `Version ${_pendingUpdateVersion} ready to install`}</div>
+      <div style="color:var(--text-secondary);font-size:12px;">${lang === 'ar' ? 'سيتم إغلاق التطبيق وتثبيت التحديث' : 'The app will close and install the update'}</div>`;
+    actionHtml = `<button id="update-install-btn" class="btn" style="flex:1;height:48px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:var(--success);color:#fff;">
+      🔄 ${lang === 'ar' ? 'تثبيت وإعادة التشغيل' : 'Install & Restart'}</button>`;
+  } else if (_isDownloading) {
+    // Downloading
+    statusHtml = `
+      <div style="color:var(--accent);font-size:15px;font-weight:700;margin-bottom:12px;">⬇️ ${lang === 'ar' ? `جاري تحميل الإصدار ${_pendingUpdateVersion}` : `Downloading version ${_pendingUpdateVersion}`}</div>
+      <div style="background:var(--bg-tertiary);border-radius:8px;height:24px;overflow:hidden;position:relative;">
+        <div id="update-progress-fill" style="background:var(--accent);height:100%;border-radius:8px;transition:width 0.3s;width:${_downloadPercent}%;"></div>
+        <div id="update-progress-pct" style="position:absolute;top:0;left:0;right:0;text-align:center;line-height:24px;font-size:12px;font-weight:700;color:var(--text-primary);">${_downloadPercent}%</div>
+      </div>`;
+    actionHtml = '';
+  } else if (_updateError) {
+    // Error
+    statusHtml = `
+      <div style="color:var(--danger);font-size:14px;font-weight:700;margin-bottom:8px;">❌ ${lang === 'ar' ? 'فشل التحديث' : 'Update failed'}</div>
+      <div style="color:var(--text-secondary);font-size:12px;">${_updateError}</div>`;
+    actionHtml = `<button id="update-retry-btn" class="btn" style="flex:1;height:48px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;">
+      🔄 ${lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}</button>`;
+  } else if (_pendingUpdateVersion) {
+    // Update found, waiting for user to download
+    statusHtml = `
+      <div style="color:var(--accent);font-size:16px;font-weight:700;margin-bottom:8px;">🆕 ${lang === 'ar' ? `الإصدار ${_pendingUpdateVersion} متاح` : `Version ${_pendingUpdateVersion} available`}</div>
+      <div style="color:var(--text-secondary);font-size:12px;">${lang === 'ar' ? 'اضغط تحميل لبدء التنزيل' : 'Click Download to start'}</div>`;
+    actionHtml = `<button id="update-download-btn" class="btn" style="flex:1;height:48px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;">
+      ⬇️ ${lang === 'ar' ? 'تحميل التحديث' : 'Download Update'}</button>`;
+  } else {
+    // No update
+    statusHtml = `<div style="color:var(--text-secondary);font-size:14px;">✅ ${lang === 'ar' ? 'أنت تستخدم أحدث إصدار' : 'You are on the latest version'}</div>`;
+    actionHtml = `<button id="update-check-btn" class="btn" style="flex:1;height:48px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;">
+      🔍 ${lang === 'ar' ? 'التحقق من التحديثات' : 'Check for Updates'}</button>`;
+  }
 
   content.innerHTML = `
     <div class="slide-in" style="max-width:600px;margin:0 auto;padding:32px 20px;">
       <h2 style="margin-bottom:24px;font-size:22px;">${lang === 'ar' ? '🔄 التحديثات' : '🔄 Updates'}</h2>
-      
       <div style="background:var(--bg-secondary);border-radius:12px;padding:24px;border:1px solid var(--border-primary);margin-bottom:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div>
@@ -1146,72 +1200,76 @@ async function renderUpdatesPage(content) {
             </svg>
           </div>
         </div>
-
         <div id="update-status" style="padding:16px;border-radius:8px;background:var(--bg-primary);border:1px solid var(--border-primary);text-align:center;margin-bottom:16px;">
-          ${_updateDownloaded 
-            ? `<div style="color:var(--success);font-size:15px;font-weight:700;margin-bottom:8px;">🎉 ${lang === 'ar' ? `الإصدار ${_pendingUpdateVersion} جاهز للتثبيت` : `Version ${_pendingUpdateVersion} is ready to install`}</div>
-               <div style="color:var(--text-secondary);font-size:12px;">${lang === 'ar' ? 'سيتم إعادة تشغيل التطبيق لتطبيق التحديث' : 'The app will restart to apply the update'}</div>`
-            : _pendingUpdateVersion
-              ? `<div style="color:var(--accent);font-size:15px;font-weight:700;margin-bottom:8px;">⬇️ ${lang === 'ar' ? `جاري تحميل الإصدار ${_pendingUpdateVersion}...` : `Downloading version ${_pendingUpdateVersion}...`}</div>`
-              : `<div style="color:var(--text-secondary);font-size:14px;">✅ ${lang === 'ar' ? 'أنت تستخدم أحدث إصدار' : 'You are on the latest version'}</div>`
-          }
+          ${statusHtml}
         </div>
-
         <div style="display:flex;gap:12px;">
-          ${_updateDownloaded 
-            ? `<button id="update-install-btn" class="btn" style="flex:1;height:48px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:var(--success);color:#fff;">
-                🔄 ${lang === 'ar' ? 'تثبيت وإعادة التشغيل' : 'Install & Restart'}
-              </button>`
-            : `<button id="update-check-btn" class="btn" style="flex:1;height:48px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;">
-                🔍 ${lang === 'ar' ? 'التحقق من التحديثات' : 'Check for Updates'}
-              </button>`
-          }
+          ${actionHtml}
         </div>
       </div>
-
       <div style="color:var(--text-tertiary);font-size:11px;text-align:center;line-height:1.8;">
-        ${lang === 'ar' ? 'يتم التحقق من التحديثات تلقائياً عند فتح التطبيق' : 'Updates are checked automatically when the app opens'}<br>
         ${lang === 'ar' ? 'بياناتك وإعداداتك لن تتأثر بالتحديث' : 'Your data and settings are not affected by updates'}
       </div>
     </div>
   `;
 
-  const installBtn = content.querySelector('#update-install-btn');
-  if (installBtn) {
-    installBtn.addEventListener('click', () => {
-      installBtn.disabled = true;
-      installBtn.textContent = lang === 'ar' ? '⏳ جاري التثبيت...' : '⏳ Installing...';
-      window.daftrly.installUpdate();
-    });
-  }
-
-  const checkBtn = content.querySelector('#update-check-btn');
-  if (checkBtn) {
-    checkBtn.addEventListener('click', async () => {
-      checkBtn.disabled = true;
-      checkBtn.textContent = lang === 'ar' ? '⏳ جاري التحقق...' : '⏳ Checking...';
-      const statusEl = content.querySelector('#update-status');
-      
-      try {
-        const result = await window.daftrly.checkForUpdate();
-        if (result && result.updateAvailable) {
-          statusEl.innerHTML = `<div style="color:var(--accent);font-size:15px;font-weight:700;">⬇️ ${lang === 'ar' ? 'جاري تحميل التحديث...' : 'Downloading update...'}</div>`;
-        } else if (!_pendingUpdateVersion) {
-          statusEl.innerHTML = `<div style="color:var(--success);font-size:14px;">✅ ${lang === 'ar' ? 'أنت تستخدم أحدث إصدار' : 'You are on the latest version'}</div>`;
-          checkBtn.disabled = false;
-          checkBtn.textContent = lang === 'ar' ? '🔍 التحقق من التحديثات' : '🔍 Check for Updates';
-        }
-      } catch(e) {
-        statusEl.innerHTML = `<div style="color:var(--danger);font-size:13px;">❌ ${lang === 'ar' ? 'فشل التحقق — تأكد من اتصال الإنترنت' : 'Check failed — verify internet connection'}</div>`;
-        checkBtn.disabled = false;
-        checkBtn.textContent = lang === 'ar' ? '🔍 التحقق من التحديثات' : '🔍 Check for Updates';
+  // Button handlers
+  content.querySelector('#update-check-btn')?.addEventListener('click', async () => {
+    const btn = content.querySelector('#update-check-btn');
+    btn.disabled = true;
+    btn.textContent = lang === 'ar' ? '⏳ جاري التحقق...' : '⏳ Checking...';
+    _updateError = null;
+    try {
+      const result = await window.daftrly.checkForUpdate();
+      if (result.updateAvailable) {
+        _pendingUpdateVersion = result.version;
+        renderUpdatesPage(content);
+      } else {
+        btn.disabled = false;
+        btn.textContent = lang === 'ar' ? '🔍 التحقق من التحديثات' : '🔍 Check for Updates';
+        document.getElementById('update-status').innerHTML = `<div style="color:var(--success);font-size:14px;">✅ ${lang === 'ar' ? 'أنت تستخدم أحدث إصدار' : 'You are on the latest version'}</div>`;
       }
-    });
-  }
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = lang === 'ar' ? '🔍 التحقق من التحديثات' : '🔍 Check for Updates';
+      document.getElementById('update-status').innerHTML = `<div style="color:var(--danger);font-size:13px;">❌ ${lang === 'ar' ? 'فشل التحقق — تأكد من الإنترنت' : 'Check failed — verify internet'}</div>`;
+    }
+  });
 
-  // Clear badge when user visits this page
+  content.querySelector('#update-download-btn')?.addEventListener('click', async () => {
+    _isDownloading = true;
+    _downloadPercent = 0;
+    _updateError = null;
+    renderUpdatesPage(content);
+    window.daftrly.downloadUpdate().catch(e => {
+      _updateError = e.message;
+      _isDownloading = false;
+      renderUpdatesPage(content);
+    });
+  });
+
+  content.querySelector('#update-install-btn')?.addEventListener('click', () => {
+    const btn = content.querySelector('#update-install-btn');
+    btn.disabled = true;
+    btn.textContent = lang === 'ar' ? '⏳ جاري التثبيت...' : '⏳ Installing...';
+    window.daftrly.installUpdate();
+  });
+
+  content.querySelector('#update-retry-btn')?.addEventListener('click', () => {
+    _updateError = null;
+    _isDownloading = true;
+    _downloadPercent = 0;
+    renderUpdatesPage(content);
+    window.daftrly.downloadUpdate().catch(e => {
+      _updateError = e.message;
+      _isDownloading = false;
+      renderUpdatesPage(content);
+    });
+  });
+
+  // Clear badge when visiting (unless update is ready)
   const badge = document.getElementById('update-badge');
-  if (badge && !_updateDownloaded) badge.style.display = 'none';
+  if (badge && !_updateReady) badge.style.display = 'none';
 }
 
 // ============ LICENSE: TRIAL BANNER ============

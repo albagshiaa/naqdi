@@ -86,7 +86,12 @@ contextBridge.exposeInMainWorld('daftrly', {
 
   // Auto-updater events
   onUpdateAvailable: (callback) => ipcRenderer.on('update:available', (e, version) => callback(version)),
+  onUpdateNotAvailable: (callback) => ipcRenderer.on('update:not-available', (e, version) => callback(version)),
+  onUpdateProgress: (callback) => ipcRenderer.on('update:progress', (e, percent) => callback(percent)),
+  onUpdateReady: (callback) => ipcRenderer.on('update:ready', (e, version) => callback(version)),
+  onUpdateError: (callback) => ipcRenderer.on('update:error', (e, msg) => callback(msg)),
   onUpdateDownloaded: (callback) => ipcRenderer.on('update:downloaded', (e, version) => callback(version)),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   checkForUpdate: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
 });
