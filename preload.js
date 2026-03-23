@@ -88,4 +88,5 @@ contextBridge.exposeInMainWorld('daftrly', {
   onUpdateAvailable: (callback) => ipcRenderer.on('update:available', (e, version) => callback(version)),
   onUpdateDownloaded: (callback) => ipcRenderer.on('update:downloaded', (e, version) => callback(version)),
   installUpdate: () => ipcRenderer.invoke('update:install'),
+  checkForUpdate: () => ipcRenderer.invoke('update:check'),
 });

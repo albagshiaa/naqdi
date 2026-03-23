@@ -7,15 +7,32 @@ const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
-autoUpdater.logger = require('electron').app ? null : console;
+autoUpdater.logger = console;
 
 function setupAutoUpdater() {
-  // Check for updates silently on startup — don't block the app
+  // For private GitHub repos, set the token for auto-updater
+  const GH_TOKEN = process.env.GH_TOKEN || '';
+  if (GH_TOKEN) {
+    autoUpdater.requestHeaders = { Authorization: `token ${GH_TOKEN}` };
+  }
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[Updater] Checking for updates...');
+  });
+
   autoUpdater.on('update-available', (info) => {
     console.log('[Updater] Update available:', info.version);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update:available', info.version);
     }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('[Updater] Already on latest version:', info.version);
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    console.log('[Updater] Download progress:', Math.round(progress.percent) + '%');
   });
 
   autoUpdater.on('update-downloaded', (info) => {
@@ -27,23 +44,37 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     console.error('[Updater] Error:', err.message);
-    // Don't show errors to user — silent fail, try again next launch
   });
 
   // Check after 10 seconds (let the app finish loading first)
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {});
+    console.log('[Updater] Starting initial check...');
+    autoUpdater.checkForUpdates().catch(err => {
+      console.error('[Updater] Check failed:', err.message);
+    });
   }, 10000);
 
   // Then check every 4 hours
   setInterval(() => {
-    autoUpdater.checkForUpdates().catch(() => {});
+    autoUpdater.checkForUpdates().catch(err => {
+      console.error('[Updater] Periodic check failed:', err.message);
+    });
   }, 4 * 60 * 60 * 1000);
 }
 
 // IPC handler — user clicks "restart to update"
 ipcMain.handle('update:install', () => {
   autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.handle('update:check', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { updateAvailable: !!result?.updateInfo?.version };
+  } catch (err) {
+    console.error('[Updater] Manual check failed:', err.message);
+    throw err;
+  }
 });
 
 ipcMain.handle('app:getVersion', () => {

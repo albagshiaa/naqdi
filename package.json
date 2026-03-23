@@ -1,6 +1,6 @@
 {
   "name": "naqdi",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Naqdi - Smart POS for Saudi Merchants",
   "main": "main.js",
   "scripts": {
@@ -36,7 +36,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "renderer/icon.ico",
@@ -59,7 +61,7 @@
       "provider": "github",
       "owner": "albagshiaa",
       "repo": "naqdi",
-      "private": true,
+      "private": false,
       "releaseType": "release"
     }
   },
