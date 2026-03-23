@@ -64,7 +64,8 @@ contextBridge.exposeInMainWorld('daftrly', {
 
   // App info
   platform: process.platform,
-  version: require('./package.json').version,
+  version: '1.0.0',
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
 
   // Menu events from main process
   onMenuNav: (callback) => ipcRenderer.on('nav', (e, page) => callback(page)),

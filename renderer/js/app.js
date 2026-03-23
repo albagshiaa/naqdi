@@ -998,7 +998,7 @@ function showAboutDialog() {
         </div>
         <div style="font-size:24px;font-weight:700;margin-bottom:4px;">نقدي</div>
         <div style="font-size:13px;color:var(--text-secondary);letter-spacing:2px;margin-bottom:4px;">NAQDI</div>
-        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">${lang === 'ar' ? 'الكاشير الذكي' : 'Smart POS'} — v${window.daftrly.version}</div>
+        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;" id="about-version">${lang === 'ar' ? 'الكاشير الذكي' : 'Smart POS'} — v${window.daftrly.version}</div>
         <div style="border-top:1px solid var(--border-primary);padding-top:16px;font-size:12px;color:var(--text-secondary);line-height:1.8;">
           <div style="font-weight:600;">© 2025 ${lang === 'ar' ? 'شركة أساس البحث التجارية المحدودة' : 'Asas Albahth Commercial Company'}</div>
           <div>${lang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}</div>
@@ -1018,6 +1018,13 @@ function showAboutDialog() {
   document.body.appendChild(overlay);
 
   overlay.querySelector('#about-close').addEventListener('click', () => overlay.remove());
+  // Fetch real version from main process
+  if (window.daftrly.getVersion) {
+    window.daftrly.getVersion().then(v => {
+      const el = overlay.querySelector('#about-version');
+      if (el) el.textContent = (lang === 'ar' ? 'الكاشير الذكي' : 'Smart POS') + ' — v' + v;
+    }).catch(() => {});
+  }
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   overlay.querySelector('#about-email').addEventListener('click', (e) => {
     e.preventDefault();

@@ -46,6 +46,10 @@ ipcMain.handle('update:install', () => {
   autoUpdater.quitAndInstall(false, true);
 });
 
+ipcMain.handle('app:getVersion', () => {
+  return app.getVersion();
+});
+
 // ============ CRASH PREVENTION — catch all unhandled errors ============
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception:', err.message, err.stack);
