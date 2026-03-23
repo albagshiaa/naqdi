@@ -1,0 +1,78 @@
+{
+  "name": "naqdi",
+  "version": "1.0.0",
+  "description": "Naqdi - نقدي | Smart POS for Saudi Merchants",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "publish": "electron-builder --win --publish always"
+  },
+  "author": {
+    "name": "Asas Albahth Commercial Company",
+    "email": "info@asassearch.com"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/albagshiaa/naqdi.git"
+  },
+  "build": {
+    "appId": "com.naqdi.pos",
+    "productName": "Naqdi",
+    "copyright": "Copyright © 2025 Asas Albahth Commercial Company",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "zatca.js",
+      "package.json",
+      "node_modules/**/*",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "renderer/icon-256.png",
+      "publisherName": "Asas Albahth Commercial Company"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "renderer/icon-256.png",
+      "uninstallerIcon": "renderer/icon-256.png",
+      "installerHeaderIcon": "renderer/icon-256.png",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Naqdi",
+      "perMachine": false,
+      "allowElevation": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "albagshiaa",
+      "repo": "naqdi",
+      "private": true,
+      "releaseType": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7",
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.10.0",
+    "uuid": "^9.0.0",
+    "xlsx": "^0.18.5",
+    "zatca-xml-js": "^0.1.1"
+  }
+}

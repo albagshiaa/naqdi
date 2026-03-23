@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: blob:;">
+  <title>Naqdi - نقدي</title>
+  
+  <!-- Google Fonts: Noto Sans Arabic + Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Theme & Styles -->
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/products.css">
+  <link rel="stylesheet" href="css/pos.css">
+  <link rel="stylesheet" href="css/invoices.css">
+  <link rel="stylesheet" href="css/system.css">
+  
+  <style>
+    /* Loading screen */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #0F172A;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      transition: opacity 400ms ease;
+    }
+    #loading-screen.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loading-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 20px;
+      font-family: 'Noto Sans Arabic', sans-serif;
+    }
+    .loading-name {
+      font-size: 28px;
+      font-weight: 700;
+      color: #F1F5F9;
+      font-family: 'Noto Sans Arabic', sans-serif;
+      margin-bottom: 6px;
+    }
+    .loading-sub {
+      font-size: 14px;
+      color: #D4A853;
+      font-family: 'Noto Sans Arabic', sans-serif;
+      margin-bottom: 30px;
+    }
+    .loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #1E293B;
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-logo">د</div>
+    <div class="loading-name">نقدي</div>
+    <div class="loading-sub">المحاسبة الذكية</div>
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- App Root -->
+  <div id="app"></div>
+
+  <!-- Scripts -->
+  <script src="js/debug.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/pos.js"></script>
+  <script src="js/customers.js"></script>
+  <script src="js/invoices.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/expenses.js"></script>
+  <script src="js/suppliers.js"></script>
+  <script src="js/purchases.js"></script>
+  <script src="js/system.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
