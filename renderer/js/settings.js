@@ -41,6 +41,7 @@ async function renderSettings(container) {
     { id: 'qoyod', icon: 'receipt', labelAr: 'ربط المحاسبة (قيود)', labelEn: 'Accounting (Qoyod)', perm: 'settings_access' },
     { id: 'backup', icon: 'settings', labelAr: 'النسخ الاحتياطي', labelEn: 'Backup', perm: 'backup_access' },
     { id: 'stock_adjust', icon: 'products', labelAr: 'تعديل المخزون', labelEn: 'Stock Adjustment', perm: 'settings_access' },
+    { id: 'peer_sync', icon: 'settings', labelAr: 'مزامنة الأجهزة', labelEn: 'Device Sync', perm: 'settings_access' },
     { id: 'data_manage', icon: 'settings', labelAr: 'إدارة البيانات', labelEn: 'Data Management', perm: 'settings_access' },
     { id: 'users', icon: 'customers', labelAr: 'المستخدمين', labelEn: 'Users', perm: 'users_manage' },
     { id: 'license', icon: 'settings', labelAr: 'الترخيص', labelEn: 'License' },
@@ -104,6 +105,7 @@ function renderSettingsTab(container, tabId, allSettings) {
     case 'qoyod': renderQoyodSettings(container, allSettings); break;
     case 'backup': renderBackupSettings(container, allSettings); break;
     case 'stock_adjust': renderStockAdjustment(container, allSettings); break;
+    case 'peer_sync': renderPeerSyncSettings(container, allSettings); break;
     case 'data_manage': renderDataManagement(container, allSettings); break;
     case 'users': renderUserManagement(container); break;
     case 'license': renderLicenseSettings(container, allSettings); break;
@@ -3093,6 +3095,200 @@ async function renderDataManagement(container) {
      "UPDATE suppliers SET qoyod_id = NULL", "UPDATE categories SET qoyod_id = NULL",
      "UPDATE sequences SET current_value = 0"],
     'nuke_all'));
+}
+
+// ==================== PEER SYNC SETTINGS ====================
+
+async function renderPeerSyncSettings(container, allSettings) {
+  const lang = window.i18n.getLang();
+
+  let status = {};
+  try { status = await window.daftrly.syncGetStatus(); } catch (e) {}
+
+  const isNone = !status.role || status.role === 'none';
+  const isPrimary = status.role === 'primary';
+  const isSecondary = status.role === 'secondary';
+
+  container.innerHTML = `
+    <div style="max-width:600px;">
+      ${settingsHeader('مزامنة الأجهزة', 'Device Sync',
+        'مزامنة البيانات بين أجهزة نقدي على نفس شبكة WiFi',
+        'Sync data between Naqdi devices on the same WiFi network')}
+
+      <div class="settings-card" style="margin-top:16px;">
+        ${isNone ? `
+          <div style="text-align:center;padding:20px 0;">
+            <div style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">
+              ${lang === 'ar'
+                ? 'اختر دور هذا الجهاز في المزامنة'
+                : 'Choose this device sync role'}
+            </div>
+            <button class="btn btn-primary" id="sync-create-btn" style="width:100%;padding:12px;font-size:14px;margin-bottom:12px;">
+              🖥️ ${lang === 'ar' ? 'إنشاء مجموعة (جهاز رئيسي)' : 'Create Group (Primary)'}
+            </button>
+            <div style="color:var(--text-tertiary);font-size:12px;margin:12px 0;">
+              ${lang === 'ar' ? '— أو —' : '— or —'}
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <input type="text" id="sync-join-code" class="form-input" placeholder="${lang === 'ar' ? 'رمز المجموعة' : 'Group Code'}" maxlength="6" style="flex:1;text-align:center;font-size:18px;letter-spacing:4px;">
+              <input type="text" id="sync-join-secret" class="form-input" placeholder="${lang === 'ar' ? 'رمز الأمان' : 'Secret'}" maxlength="4" style="width:100px;text-align:center;font-size:18px;letter-spacing:2px;text-transform:uppercase;">
+            </div>
+            <input type="text" id="sync-join-ip" class="form-input" placeholder="${lang === 'ar' ? 'IP الجهاز الرئيسي (اختياري)' : 'Primary IP (optional)'}" style="margin-bottom:8px;">
+            <button class="btn btn-secondary" id="sync-join-btn" style="width:100%;padding:12px;font-size:14px;">
+              📱 ${lang === 'ar' ? 'انضمام (جهاز ثانوي)' : 'Join Group (Secondary)'}
+            </button>
+          </div>
+        ` : ''}
+
+        ${isPrimary ? `
+          <div style="background:rgba(34,197,94,0.1);border:1px solid #22c55e;border-radius:8px;padding:20px;text-align:center;">
+            <div style="color:#22c55e;font-weight:700;font-size:14px;margin-bottom:12px;">
+              🖥️ ${lang === 'ar' ? 'جهاز رئيسي — نشط' : 'Primary — Active'}
+            </div>
+            <div style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:6px;margin:8px 0;">
+              ${status.code || '------'}
+            </div>
+            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">
+              ${lang === 'ar' ? 'رمز المجموعة' : 'Group Code'}
+            </div>
+            <div style="font-size:22px;font-weight:800;color:var(--accent);letter-spacing:4px;margin:12px 0 4px;">
+              ${status.secret || '----'}
+            </div>
+            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:12px;">
+              ${lang === 'ar' ? 'رمز الأمان — شاركه مع الجهاز الثانوي' : 'Security Code — share with secondary device'}
+            </div>
+            <div style="color:var(--text-secondary);font-size:12px;">
+              ${lang === 'ar' ? 'الأجهزة المتصلة:' : 'Connected:'} <strong>${status.connected || 0}</strong>
+            </div>
+            <div style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
+              ${lang === 'ar' ? 'آخر مزامنة:' : 'Last sync:'} ${status.lastSync ? status.lastSync.substring(11, 19) : '-'}
+            </div>
+          </div>
+        ` : ''}
+
+        ${isSecondary ? `
+          <div style="background:rgba(59,130,246,0.1);border:1px solid #3b82f6;border-radius:8px;padding:20px;text-align:center;">
+            <div style="color:#3b82f6;font-weight:700;font-size:14px;margin-bottom:8px;">
+              📱 ${lang === 'ar' ? 'جهاز ثانوي — متصل' : 'Secondary — Connected'}
+            </div>
+            <div style="color:var(--text-secondary);font-size:12px;">
+              ${lang === 'ar' ? 'متصل بـ:' : 'Connected to:'} ${status.primaryIP || '-'}
+            </div>
+            <div style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
+              ${lang === 'ar' ? 'آخر مزامنة:' : 'Last sync:'} ${status.lastSync ? status.lastSync.substring(11, 19) : '-'}
+            </div>
+          </div>
+        ` : ''}
+
+        ${!isNone ? `
+          <div style="display:flex;gap:8px;margin-top:16px;">
+            <button class="btn btn-primary" id="sync-now-btn" style="flex:1;padding:10px;">
+              🔄 ${lang === 'ar' ? 'مزامنة الآن' : 'Sync Now'}
+            </button>
+            <button class="btn btn-danger" id="sync-stop-btn" style="padding:10px;">
+              ⏹ ${lang === 'ar' ? 'قطع الاتصال' : 'Disconnect'}
+            </button>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="settings-card" style="margin-top:16px;padding:16px;">
+        <div style="font-weight:700;color:var(--text);font-size:13px;margin-bottom:8px;">
+          ${lang === 'ar' ? 'ما يتم مزامنته:' : 'What gets synced:'}
+        </div>
+        <div style="color:var(--text-secondary);font-size:12px;line-height:1.8;">
+          ✅ ${lang === 'ar' ? 'المنتجات والأصناف' : 'Products & Categories'}<br>
+          ✅ ${lang === 'ar' ? 'العملاء' : 'Customers'}<br>
+          ✅ ${lang === 'ar' ? 'المبيعات والفواتير' : 'Sales & Invoices'}<br>
+          ✅ ${lang === 'ar' ? 'المرتجعات' : 'Returns'}<br>
+          ✅ ${lang === 'ar' ? 'حركات المخزون' : 'Stock Movements'}<br>
+          ✅ ${lang === 'ar' ? 'المستخدمين (الكاشير)' : 'Users (Cashiers)'}<br>
+          ✅ ${lang === 'ar' ? 'الإعدادات المشتركة (الضريبة، الفاتورة)' : 'Shared Settings (VAT, Invoice Format)'}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Create Group
+  const createBtn = container.querySelector('#sync-create-btn');
+  if (createBtn) {
+    createBtn.addEventListener('click', async () => {
+      createBtn.disabled = true;
+      createBtn.textContent = '...';
+      try {
+        const result = await window.daftrly.syncCreateGroup();
+        if (result.error) throw new Error(result.error);
+        showToast(lang === 'ar' ? '✅ تم إنشاء مجموعة المزامنة' : '✅ Sync group created', 'success');
+        renderPeerSyncSettings(container, allSettings);
+      } catch (e) {
+        showToast(e.message, 'error');
+        createBtn.disabled = false;
+        createBtn.textContent = lang === 'ar' ? '🖥️ إنشاء مجموعة (جهاز رئيسي)' : '🖥️ Create Group (Primary)';
+      }
+    });
+  }
+
+  // Join Group
+  const joinBtn = container.querySelector('#sync-join-btn');
+  if (joinBtn) {
+    joinBtn.addEventListener('click', async () => {
+      const code = container.querySelector('#sync-join-code')?.value?.trim();
+      const secret = container.querySelector('#sync-join-secret')?.value?.trim()?.toUpperCase();
+      const ip = container.querySelector('#sync-join-ip')?.value?.trim();
+
+      if (!code || code.length !== 6) { showToast(lang === 'ar' ? 'أدخل رمز المجموعة (6 أرقام)' : 'Enter 6-digit group code', 'error'); return; }
+      if (!secret || secret.length !== 4) { showToast(lang === 'ar' ? 'أدخل رمز الأمان (4 أحرف)' : 'Enter 4-character security code', 'error'); return; }
+
+      joinBtn.disabled = true;
+      joinBtn.textContent = '...';
+      try {
+        const result = await window.daftrly.syncJoinGroup(code, secret, ip || undefined);
+        if (result.error) throw new Error(result.error);
+        showToast(lang === 'ar' ? '✅ تم الانضمام' : '✅ Joined successfully', 'success');
+        renderPeerSyncSettings(container, allSettings);
+      } catch (e) {
+        showToast(e.message, 'error');
+        joinBtn.disabled = false;
+        joinBtn.textContent = lang === 'ar' ? '📱 انضمام (جهاز ثانوي)' : '📱 Join Group (Secondary)';
+      }
+    });
+  }
+
+  // Sync Now
+  const syncNowBtn = container.querySelector('#sync-now-btn');
+  if (syncNowBtn) {
+    syncNowBtn.addEventListener('click', async () => {
+      syncNowBtn.disabled = true;
+      syncNowBtn.textContent = '...';
+      try {
+        const result = await window.daftrly.syncNow();
+        showToast(result.message || (result.success ? '✅' : '⚠️'), result.success ? 'success' : 'warning');
+      } catch (e) { showToast(e.message, 'error'); }
+      syncNowBtn.disabled = false;
+      syncNowBtn.textContent = lang === 'ar' ? '🔄 مزامنة الآن' : '🔄 Sync Now';
+    });
+  }
+
+  // Disconnect
+  const stopBtn = container.querySelector('#sync-stop-btn');
+  if (stopBtn) {
+    stopBtn.addEventListener('click', async () => {
+      try {
+        await window.daftrly.syncStop();
+        showToast(lang === 'ar' ? 'تم قطع الاتصال' : 'Disconnected', 'success');
+        renderPeerSyncSettings(container, allSettings);
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+  }
+
+  // Listen for real-time status updates
+  if (window.daftrly.onSyncStatusChanged) {
+    window.daftrly.onSyncStatusChanged((newStatus) => {
+      if (newStatus.connected !== undefined || newStatus.lastSync) {
+        renderPeerSyncSettings(container, allSettings);
+      }
+    });
+  }
 }
 
 // ==================== QOYOD ACCOUNTING INTEGRATION ====================

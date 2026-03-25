@@ -94,4 +94,11 @@ contextBridge.exposeInMainWorld('daftrly', {
   installUpdate: () => ipcRenderer.invoke('update:install'),
   checkForUpdate: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  // Peer Sync
+  syncCreateGroup: () => ipcRenderer.invoke('sync:createGroup'),
+  syncJoinGroup: (code, secret, primaryIP) => ipcRenderer.invoke('sync:joinGroup', code, secret, primaryIP),
+  syncNow: () => ipcRenderer.invoke('sync:now'),
+  syncStop: () => ipcRenderer.invoke('sync:stop'),
+  syncGetStatus: () => ipcRenderer.invoke('sync:getStatus'),
+  onSyncStatusChanged: (callback) => ipcRenderer.on('sync:statusChanged', (e, status) => callback(status)),
 });

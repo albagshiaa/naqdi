@@ -2119,6 +2119,65 @@ app.whenReady().then(async () => {
 
   createWindow();
 
+  // ============ PEER SYNC INITIALIZATION ============
+  const peerSync = require('./sync');
+  peerSync.init(store);
+
+  ipcMain.handle('sync:createGroup', async () => {
+    try {
+      const result = await peerSync.createSyncGroup(db);
+      return result;
+    } catch (error) {
+      console.error('[IPC] Sync create error:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('sync:joinGroup', async (event, code, secret, primaryIP) => {
+    try {
+      await peerSync.joinSyncGroup(db, code, secret, primaryIP || undefined);
+      return { success: true };
+    } catch (error) {
+      console.error('[IPC] Sync join error:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('sync:now', async () => {
+    try {
+      const result = await peerSync.syncNow(db);
+      return result;
+    } catch (error) {
+      console.error('[IPC] Sync now error:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('sync:stop', () => {
+    try {
+      peerSync.stopSync();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('sync:getStatus', () => {
+    try {
+      return peerSync.getSyncStatus();
+    } catch (error) {
+      return { available: false, role: 'none', error: error.message };
+    }
+  });
+
+  peerSync.onStatusChange((status) => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sync:statusChanged', status);
+      }
+    } catch (e) {}
+  });
+
   // Start auto-updater (checks GitHub for new versions)
   setupAutoUpdater();
 
