@@ -190,6 +190,7 @@ const PERMISSION_LABELS = {
   pos_split:       { ar: 'الدفع المقسم', en: 'Split Payment' },
   pos_giftcard:    { ar: 'قبول بطاقات الهدايا', en: 'Accept Gift Cards' },
   pos_credit_notes: { ar: 'إصدار إشعارات دائنة/مدينة', en: 'Issue Credit/Debit Notes' },
+  pos_open_item:   { ar: 'صنف مفتوح (منتج مخصص)', en: 'Open Item (Custom Product)' },
   products_view:   { ar: 'عرض المنتجات', en: 'View Products' },
   products_add:    { ar: 'إضافة منتجات', en: 'Add Products' },
   products_edit:   { ar: 'تعديل منتجات', en: 'Edit Products' },
@@ -433,7 +434,7 @@ window.hasPermission = hasPermission;
 
 const DEFAULT_PERMISSIONS = {
   pos_sell: true, pos_discount: false, pos_refund: false, pos_hold: true, pos_partial: false,
-  pos_split: true, pos_giftcard: true, pos_credit_notes: false,
+  pos_split: true, pos_giftcard: true, pos_credit_notes: false, pos_open_item: false,
   products_view: true, products_add: false, products_edit: false, products_delete: false,
   products_view_cost: false,
   customers_view: true, customers_add: true, customers_edit: false,

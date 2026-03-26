@@ -3281,14 +3281,8 @@ async function renderPeerSyncSettings(container, allSettings) {
     });
   }
 
-  // Listen for real-time status updates
-  if (window.daftrly.onSyncStatusChanged) {
-    window.daftrly.onSyncStatusChanged((newStatus) => {
-      if (newStatus.connected !== undefined || newStatus.lastSync) {
-        renderPeerSyncSettings(container, allSettings);
-      }
-    });
-  }
+  // Status updates will show on next manual navigation to this tab
+  // (no auto-refresh listener — prevents infinite re-render loop)
 }
 
 // ==================== QOYOD ACCOUNTING INTEGRATION ====================

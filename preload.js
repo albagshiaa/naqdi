@@ -100,5 +100,5 @@ contextBridge.exposeInMainWorld('daftrly', {
   syncNow: () => ipcRenderer.invoke('sync:now'),
   syncStop: () => ipcRenderer.invoke('sync:stop'),
   syncGetStatus: () => ipcRenderer.invoke('sync:getStatus'),
-  onSyncStatusChanged: (callback) => ipcRenderer.on('sync:statusChanged', (e, status) => callback(status)),
+  onSyncStatusChanged: (callback) => { ipcRenderer.removeAllListeners('sync:statusChanged'); ipcRenderer.on('sync:statusChanged', (e, status) => callback(status)); },
 });

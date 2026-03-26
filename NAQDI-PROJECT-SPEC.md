@@ -26,8 +26,10 @@ Electron v28+ (Windows), vanilla JS + HTML/CSS, sql.js (WASM SQLite), JSON Setti
 - License System: 14-day trial, encrypted .license file, API verification, anti-tamper
 - Reports: 11 types + daily sales search
 - Security: 23+ permissions, PIN lock, NFC, kiosk mode
+- Device Sync: peer-to-peer over WiFi, TCP on port 9473, 23 tables synced, auto-sync every 15s
+- Open Item: custom product on the fly in POS, permission-controlled (pos_open_item)
 
-## Database: 37 tables | IPC: 46 channels | Settings: 29 tabs | Permissions: 23+
+## Database: 37 tables | IPC: 46+ channels | Settings: 29 tabs | Permissions: 24+
 
 ## Critical Rules
 1. No electron-store or better-sqlite3 (native modules)

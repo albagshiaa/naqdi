@@ -162,3 +162,37 @@ Settings → Backup — creates full database + settings backup
 
 ## Support
 Email: info@asassearch.com
+
+## Device Sync (Peer-to-Peer)
+Sync data between two Naqdi devices over WiFi — no internet required.
+
+### Setup
+1. Both devices must be on the same WiFi network
+2. **Primary device**: Settings → Device Sync → Create Group → note the 6-digit code and 4-character secret
+3. **Secondary device**: Settings → Device Sync → enter the code and secret → Join Group
+4. Sync starts automatically every 15 seconds
+
+### What Syncs
+Products, categories, customers, sales, invoices, payments, returns, stock movements, users, promotions, gift cards, price lists, tier pricing, suppliers, purchase orders, expenses, credit/debit notes, packages, sequences, and shared settings (VAT, invoice format, currency, etc.)
+
+### How It Works
+- Primary pushes shared settings (VAT, invoice format) to secondary
+- Both devices send ALL their data to each other
+- Duplicates are detected automatically (products by barcode/name, customers by phone/name, sales by invoice number)
+- Invoice sequences sync the higher value to avoid number conflicts
+- Connection drops are handled with automatic reconnection
+
+### Permissions
+Device Sync requires `settings_access` permission. Only admin or users with settings access can create or join sync groups.
+
+## Open Item (Custom Product)
+Add a custom item to the cart without creating a product in inventory. Useful for one-time services, delivery fees, or custom orders.
+
+### How to Use
+1. In POS, click the **➕ Open Item** button (between Note and Drawer)
+2. Enter a name and price
+3. Click "Add to Cart" — the item appears in the cart
+4. Open items do NOT deduct stock and are NOT added to the product catalog
+
+### Permission
+Open Item requires the `pos_open_item` permission. It is disabled by default for cashiers. Admin can enable it per user in Settings → Users → Edit → Permissions.

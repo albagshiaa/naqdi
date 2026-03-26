@@ -2121,11 +2121,11 @@ app.whenReady().then(async () => {
 
   // ============ PEER SYNC INITIALIZATION ============
   const peerSync = require('./sync');
-  peerSync.init(store);
+  peerSync.init(store, db, saveDatabase);
 
   ipcMain.handle('sync:createGroup', async () => {
     try {
-      const result = await peerSync.createSyncGroup(db);
+      const result = await peerSync.createSyncGroup();
       return result;
     } catch (error) {
       console.error('[IPC] Sync create error:', error.message);
@@ -2135,7 +2135,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('sync:joinGroup', async (event, code, secret, primaryIP) => {
     try {
-      await peerSync.joinSyncGroup(db, code, secret, primaryIP || undefined);
+      await peerSync.joinSyncGroup(code, secret, primaryIP || undefined);
       return { success: true };
     } catch (error) {
       console.error('[IPC] Sync join error:', error.message);
@@ -2145,7 +2145,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('sync:now', async () => {
     try {
-      const result = await peerSync.syncNow(db);
+      const result = await peerSync.syncNow();
       return result;
     } catch (error) {
       console.error('[IPC] Sync now error:', error.message);

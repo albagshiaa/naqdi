@@ -152,6 +152,7 @@ async function renderPOS(container) {
           ${window.hasPermission('pos_hold') ? `<button class="pos-action-btn pos-action-hold" id="pos-hold-btn" title="(F8)">⏸ ${lang === 'ar' ? 'تعليق' : 'Hold'}</button>` : ''}
           ${window.hasPermission('pos_discount') ? `<button class="pos-action-btn pos-action-discount" id="pos-discount-btn" title="(F9)">% ${lang === 'ar' ? 'خصم' : 'Discount'}</button>` : ''}
           <button class="pos-action-btn pos-action-note" id="pos-note-btn">📝 ${lang === 'ar' ? 'ملاحظة' : 'Note'}</button>
+          ${window.hasPermission('pos_open_item') ? `<button class="pos-action-btn" id="pos-open-item-btn" style="background:var(--info);color:#fff;">➕ ${lang === 'ar' ? 'صنف مفتوح' : 'Open Item'}</button>` : ''}
           <button class="pos-action-btn" id="pos-drawer-btn" style="background:var(--bg-tertiary);" title="">💰 ${lang === 'ar' ? 'الدرج' : 'Drawer'}</button>
           ${window.hasPermission('pos_refund') ? `
             <button class="pos-action-btn" id="pos-return-btn" style="background:var(--danger);color:#fff;">↩ ${lang === 'ar' ? 'مرتجع' : 'Return'}</button>
@@ -240,6 +241,9 @@ async function renderPOS(container) {
             <button class="pos-action-btn pos-action-note" id="pos-note-btn">
               📝 ${lang === 'ar' ? 'ملاحظة' : 'Note'}
             </button>
+            ${window.hasPermission('pos_open_item') ? `<button class="pos-action-btn" id="pos-open-item-btn" style="background:var(--info);color:#fff;">
+              ➕ ${lang === 'ar' ? 'صنف مفتوح' : 'Open Item'}
+            </button>` : ''}
             <button class="pos-action-btn" id="pos-drawer-btn" style="background:var(--bg-tertiary);" title="(F9)">
               💰 ${lang === 'ar' ? 'الدرج' : 'Drawer'}
             </button>
@@ -681,6 +685,44 @@ function bindPOSEvents(container) {
     openNoteModal(container);
   });
 
+  // Open Item — custom product on the fly
+  const openItemBtn = container.querySelector('#pos-open-item-btn');
+  if (openItemBtn) openItemBtn.addEventListener('click', () => {
+    const overlay = document.createElement('div');
+    overlay.id = 'open-item-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `<div style="background:var(--bg-primary);border-radius:16px;padding:24px;width:380px;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;text-align:center;">➕ ${lang === 'ar' ? 'صنف مفتوح' : 'Open Item'}</div>
+      <input type="text" id="open-item-name" class="form-input" placeholder="${lang === 'ar' ? 'اسم المنتج' : 'Product name'}" style="width:100%;margin-bottom:10px;padding:10px 14px;font-size:14px;" />
+      <input type="number" id="open-item-price" class="form-input" placeholder="${lang === 'ar' ? 'السعر' : 'Price'}" step="0.01" min="0" style="width:100%;margin-bottom:16px;padding:10px 14px;font-size:14px;" />
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" id="open-item-cancel" style="flex:1;">${lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
+        <button class="btn btn-primary" id="open-item-add" style="flex:1;background:var(--info);">${lang === 'ar' ? 'إضافة للسلة' : 'Add to Cart'}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('#open-item-cancel').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#open-item-name').focus();
+    overlay.querySelector('#open-item-add').addEventListener('click', () => {
+      const name = overlay.querySelector('#open-item-name').value.trim();
+      const price = parseFloat(overlay.querySelector('#open-item-price').value);
+      if (!name) { showToast(lang === 'ar' ? 'أدخل اسم المنتج' : 'Enter product name', 'warning'); return; }
+      if (!price || price <= 0) { showToast(lang === 'ar' ? 'أدخل السعر' : 'Enter price', 'warning'); return; }
+      const vatRate = window._posVat?.rate || 15;
+      posCart.push({
+        product: { id: null, name_ar: name, name_en: name, price, tax_status: 'standard', track_stock: 0, unit: 'piece', _basePrice: price },
+        quantity: 1, discount: 0, discountType: 'fixed', notes: '', is_open_item: true, _openItemId: Date.now()
+      });
+      overlay.remove();
+      renderCart(container);
+      showToast(`${lang === 'ar' ? 'تمت إضافة' : 'Added'}: ${name}`, 'success');
+    });
+    // Enter key to add
+    overlay.querySelector('#open-item-price').addEventListener('keydown', e => { if (e.key === 'Enter') overlay.querySelector('#open-item-add').click(); });
+    overlay.querySelector('#open-item-name').addEventListener('keydown', e => { if (e.key === 'Enter') overlay.querySelector('#open-item-price').focus(); });
+  });
+
   // Open cash drawer
   const drawerBtn = container.querySelector('#pos-drawer-btn');
   if (drawerBtn) drawerBtn.addEventListener('click', async () => {
@@ -1028,7 +1070,7 @@ async function addToCart(container, product) {
 async function addToCartDirect(container, product) {
   const isDecimalUnit = DECIMAL_UNITS.includes(product.unit);
   const varId = product._variantId || null;
-  const existing = posCart.find(c => c.product.id === product.id && (c.product._variantId || null) === varId);
+  const existing = product.id ? posCart.find(c => c.product.id === product.id && !c.is_open_item && (c.product._variantId || null) === varId) : null;
 
   // Store base price for tier recalculation
   if (!product._basePrice) product._basePrice = product.price;
@@ -1880,16 +1922,19 @@ async function openPaymentModal(container, method) {
 
       await window.daftrly.query(
         `INSERT INTO sale_items (sale_id, product_id, name_ar, name_en, quantity, unit_price, 
-         discount_amount, tax_rate, tax_amount, total, notes, serial_numbers)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         discount_amount, tax_rate, tax_amount, total, notes, serial_numbers, is_open_item)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [saleId, item.product.id, itemNameAr, itemNameEn,
          item.quantity, item.product.price, discount, taxRate, taxAmount,
          afterDiscount + (vat.inclusive ? 0 : taxAmount), item.notes || '',
-         item.serialNumbers ? JSON.stringify(item.serialNumbers) : null]
+         item.serialNumbers ? JSON.stringify(item.serialNumbers) : null,
+         item.is_open_item ? 1 : 0]
       );
 
-      // Update stock — variant stock or product stock
-      if (item.product._variantId) {
+      // Update stock — skip for open items (no product in inventory)
+      if (item.is_open_item) {
+        // Open item — no stock to deduct
+      } else if (item.product._variantId) {
         // Deduct from variant stock
         await window.daftrly.query(
           'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ?',
