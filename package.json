@@ -1,6 +1,6 @@
 {
   "name": "naqdi",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "description": "Naqdi - Smart POS for Saudi Merchants",
   "main": "main.js",
   "scripts": {
