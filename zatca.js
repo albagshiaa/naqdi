@@ -301,7 +301,7 @@ async function onboardEGS(store, otp) {
   const biz = settings.business || {};
   const vatNumber = biz.vatNumber || '';
   const zatcaMode = settings.zatcaMode || 'phase2_sandbox';
-  const isSandbox = zatcaMode !== 'phase2_production' && zatcaMode !== 'production';
+  const isSandbox = zatcaMode === 'phase2_sandbox' || zatcaMode === 'developer';
   const baseUrl = isSandbox ? ZATCA_URLS.sandbox : ZATCA_URLS.production;
   const endpoints = getEndpoints(zatcaMode);
 
@@ -480,7 +480,7 @@ function createSigningEGS(store) {
   const settings = store.getAll();
   const biz = settings.business || {};
   const zatcaMode = settings.zatcaMode || 'phase2_sandbox';
-  const isSandbox = zatcaMode !== 'phase2_production' && zatcaMode !== 'production';
+  const isSandbox = zatcaMode === 'phase2_sandbox' || zatcaMode === 'developer';
 
   const egsunitInfo = creds.egsunitInfo || createEGSUnitInfo(biz, biz.vatNumber || '');
   const egs = new EGS(egsunitInfo);
